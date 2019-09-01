@@ -1,0 +1,128 @@
+---
+title: "Data 607 - Assignment 1"
+author: "Habib Khan"
+date: "September 1, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+# Mushroom Dataset - Assignment 1
+
+Very often, we’re tasked with taking data in one form and transforming it for easier downstream analysis. We will spend several weeks in this course on tidying and transformation operations. Some of this work could be done in SQL or R (or Python or…). Here, you are asked to use R—you may use base functions or packages as you like.
+Mushrooms Dataset. A famous—if slightly moldy—dataset about mushrooms can be found in the UCI repository here: https://archive.ics.uci.edu/ml/datasets/Mushroom. The fact that this is such a well-known dataset in the data science community makes it a good dataset to use for comparative benchmarking. For example, if someone was working to build a better decision tree algorithm (or other predictive classifier) to analyze categorical data, this dataset could be useful. A typical problem (which is beyond the scope of this assignment!) is to answer the question, “Which other attribute or attributes are the best predictors of whether a particular mushroom is poisonous or edible?”
+Your task is to study the dataset and the associated description of the data (i.e. “data dictionary”). You may need to look around a bit, but it’s there! You should take the data, and create a data frame with a subset of the columns in the dataset. You should include the column that indicates edible or poisonous and three or four other columns. You should also add meaningful column names and replace the abbreviations used in the data—for example, in the appropriate column, “e” might become “edible.” Your deliverable is the R code to perform these transformation tasks.
+
+```{r}
+library(RCurl)
+library(knitr)
+```
+
+
+# Load the dataset and convert it into dataframe
+
+```{r}
+mushroom_ds <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.data")
+mushroom_ds <- as.data.frame(mushroom_ds)
+kable(head(mushroom_ds))
+```
+# Let's check out the summary of mushrdoom dataset
+
+```{r}
+summary(mushroom_ds)
+```
+Apparently all the variables show that they are all categorical and hence above digits show the number of those categories in that variables. 
+
+# Now let's check the data dictionary to see what's there !
+
+In order to read the file, I had to convert the dictionary into text file and saved it in my root folder. I fenced the text file from there.  
+
+```{r}
+mushroom_names <-read.delim("mushroom_dict.txt", sep="|", stringsAsFactors = FALSE, header=TRUE)
+kable(mushroom_names)
+```
+
+```{r}
+head(mushroom_ds)
+```
+
+# Rename the columns
+
+Now let's rename the column's name. First column is the class (e= edible and p=poisonous) while the rest of other 22 variables are the names which needs to be changed according to the above given names.
+
+```{r}
+names(mushroom_ds) <- c ('class', 'capshape', 'capsurface', 'capcolor', 'bruises', 'odor', 'gillattachment', 'gillspacing', 'gillsize', 'gillcolor', 'stalkshape', 'stalkroot', 'stalksurfaceabovering', 'stalksurfacebelowring', 'stalkcolorabovering', 'stalkcolorbelowring', 'veiltype', 'veilcolor', 'ringnumber', 'ringtype', 'sporeprintcolor', 'population', 'habitat')
+```
+
+Now let's check the name of the columns to see if they're changed.
+
+```{r}
+colnames(mushroom_ds)
+```
+
+# Let's create subsets first to change the category's names
+
+```{r}
+sub.mushroom_ds <- subset(mushroom_ds, select=c(class, ringtype, ringnumber, capsurface, bruises))
+summary(sub.mushroom_ds)
+```
+
+
+Now since we are done with renaming the column names, let's move to change the category types into sensible information as right now we cannot understand what each data represents. We will replace the categories of 4 variables and transform them into meaningful and clear names. 
+
+```{r}
+# Modify the variable 'class'
+
+sub.mushroom_ds$class <- as.character(sub.mushroom_ds$class)
+sub.mushroom_ds$class[sub.mushroom_ds$class =='e'] <- 'Edible'
+sub.mushroom_ds$class[sub.mushroom_ds$class =='p'] <- 'Poisonous'
+sub.mushroom_ds$class <- as.factor(sub.mushroom_ds$class)
+
+# Modify the variable 'ringtype'
+
+
+sub.mushroom_ds$ringtype <- as.character(sub.mushroom_ds$ringtype)
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='c'] <- 'cobwebby'
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='e'] <- 'evanescent'
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='f'] <- 'flaring'
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='l'] <- 'large'
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='n'] <- 'none'
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='p'] <- 'pendant'
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='s'] <- 'sheathing'
+sub.mushroom_ds$ringtype[sub.mushroom_ds$ringtype =='z'] <- 'zone'
+sub.mushroom_ds$ringtype <- as.factor(sub.mushroom_ds$ringtype)
+
+# Modify the variable 'ringnumber'
+
+sub.mushroom_ds$ringnumber <- as.character(sub.mushroom_ds$ringnumber)
+sub.mushroom_ds$ringnumber[sub.mushroom_ds$ringnumber =='n'] <- 'none'
+sub.mushroom_ds$ringnumber[sub.mushroom_ds$ringnumber =='o'] <- 'one'
+sub.mushroom_ds$ringnumber[sub.mushroom_ds$ringnumber =='t'] <- 'two'
+sub.mushroom_ds$ringnumber <- as.factor(sub.mushroom_ds$ringnumber)
+
+# Modify the variable 'capsurface'
+sub.mushroom_ds$capsurface <- as.character(sub.mushroom_ds$capsurface)
+sub.mushroom_ds$capsurface[sub.mushroom_ds$capsurface =='f'] <- 'fibrous'
+sub.mushroom_ds$capsurface[sub.mushroom_ds$capsurface =='g'] <- 'grooves'
+sub.mushroom_ds$capsurface[sub.mushroom_ds$capsurface =='y'] <- 'scaly'
+sub.mushroom_ds$capsurface[sub.mushroom_ds$capsurface =='s'] <- 'smooth'
+sub.mushroom_ds$capsurface <- as.factor(sub.mushroom_ds$capsurface)
+
+sub.mushroom_ds$bruises <- as.character(sub.mushroom_ds$bruises)
+sub.mushroom_ds$bruises[sub.mushroom_ds$bruises == 't'] <- 'bruises'
+sub.mushroom_ds$bruises[sub.mushroom_ds$bruises == 'f'] <- 'no'
+sub.mushroom_ds$bruises <- as.factor(sub.mushroom_ds$bruises)
+
+summary(sub.mushroom_ds)
+```
+
+# To check if the changes are made, let's iterate and see the data randomly
+
+```{r}
+set.seed(233)
+sub.mushroom_ds[sample(1:nrow(sub.mushroom_ds),50), ]
+```
+
