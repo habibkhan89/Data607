@@ -1,0 +1,49 @@
+---
+title: "Data 607 - Assignment 2 / Importing Data from MySQL"
+author: "Habib Khan"
+date: "September 8, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```
+
+Choose six recent popular movies. Ask at least five people that you know (friends, family, classmates, imaginary friends) to rate each of these movie that they have seen on a scale of 1 to 5. Take the results (observations) and store them in a SQL database. Load the information into an R dataframe.
+Your deliverables should include your SQL scripts and your R Markdown code, posted to GitHub.
+
+
+# Load the necessary libraries
+
+```{r echo=FALSE}
+
+library(dbplyr)
+library(RMySQL)
+library(dplyr)
+library(knitr)
+```
+
+# Connect RStudio with MySQL database to load the file
+
+```{r}
+mydb = dbConnect(MySQL(),
+                 user='root', password='password',
+                 dbname='607_hw2', host='localhost')
+```
+
+
+# Retrieve the joined tables together through Join Query
+
+```{r}
+mysql <- "select movies.movieid, movies.movieyear, respondent1.ratingid, respondent1.John, respondent1.James, 
+respondent1.Peter, respondent1.Carol, respondent1.Steve from movies 
+
+left join respondent1
+
+on movies.movieid = respondent1.movieid;"
+
+moviename <- dbGetQuery(mydb, mysql)
+moviename
+```
+
