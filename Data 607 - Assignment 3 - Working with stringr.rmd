@@ -1,0 +1,141 @@
+---
+title: "Data 607 - Assignment 3 - Working with Stringr"
+author: "Habib Khan"
+date: "September 14, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Please deliver links to an R Markdown file (in GitHub and rpubs.com) with solutions to problems 3 and 4 from chapter 8 of Automated Data Collection in R.  Problem 9 is extra credit.  You may work in a small group, but please submit separately with names of all group participants in your submission.
+Here is the referenced code for the introductory example in #3:
+ raw.data <-"555-1239Moe Szyslak(636) 555-0113Burns, C. Montgomery555-6542Rev. Timothy Lovejoy555 8904Ned Flanders636-555-3226Simpson, Homer5553642Dr. Julius Hibbert"
+ 
+ 
+ 
+```{r}
+# Open the required libraries
+library(stringr)
+library(png)
+```
+ 
+For the sake of clarity let's import the png file here to make it visible in png form. 
+
+```{r}
+img <- readPNG('week3_problems.png')
+grid::grid.raster(img)
+```
+
+Copy the introductory example and store it in extracted name and extract vector name
+
+```{r}
+raw.data <-"555-1239Moe Szyslak(636) 555-0113Burns, C. Montgomery555-6542Rev. Timothy Lovejoy555 8904Ned Flanders636-555-3226Simpson, Homer5553642Dr. Julius Hibbert"
+names <- unlist(str_extract_all(raw.data, "[[:alpha:]., ]{2,}"))
+names
+```
+
+
+
+# Problem 3.1
+
+Use the tools of this chapter to rearrange the vector so that all elements conform to the standard first_name last_name.
+
+```{r}
+# Sort the names
+
+name1 <- str_replace_all(names, "(.+)(, .+)$", "\\2 \\1")
+name1
+```
+
+```{r}
+# Remove commas if any
+
+name2 <- str_replace_all(name1, ", ", "")
+name2
+```
+
+```{r}
+# Now let's remove all prefex from names
+
+name3 <- str_replace_all(name2, "[A-Z][a-z]([a-z]?)\\.", " ")
+name3
+```
+
+# Problem 3.2
+
+This is list of previous unedited names which has titles and prefex. 
+```{r}
+df1 <- data.frame(names)
+df1$title <- str_detect(string= names, pattern= "\\w{2,3}\\.")
+df1
+```
+
+Now let's check the final vector name3 in which all prefex and unnecessary things had removed.
+
+```{r}
+df2 <- data.frame(name3)
+df2$title <- str_detect(string= name3, pattern= "\\w{2,3}\\.")
+df2
+```
+
+All the prefex and titles has been removed as shown above. 
+
+# Problem 3.3
+
+```{r}
+df2$secondname <- str_detect(string = name3, pattern= "[A-Z]{1}\\.")
+df2
+```
+
+
+
+# Problem 4
+
+```{r}
+# 4.1 - This code helps bring out the numbers along with $
+
+vector1 <- c("dsd28943889ef$asdffd", "sdf3323222$899", "sdfdsf3893$sdf")
+test41 <- unlist(str_extract_all(vector1, pattern= "[0-9]+\\$" ))
+test41
+```
+
+```{r}
+# 4.2 - This code helps identifying characters that have 4 characters
+
+v2 <- c("Hello What's up", "are you coming to take class today", "We have 2 classes!", "322 842 9000")
+str_extract_all(v2, pattern="\\b[a-z]{1,4}\\b")
+```
+
+```{r}
+# 4.3 - This code helps extracting .txt
+
+v3 <- c("abc.txt", "dfe.txt", "444", "ewe.txt", "422.txt")
+str_extract_all(v3, pattern=".*?\\.txt$")
+```
+
+```{r}
+# Problem 4.4 - This code helps identifying dates as shown below
+
+v4 <- c("09/14/2019", "07/22/2018", "as/sd/3323", "as/23/322s")
+str_extract_all(v4, pattern="\\d{2}/\\d{2}/\\d{4}")
+```
+
+```{r}
+# Problem 4.5 - This code works to extract html codes as shown below 
+
+v5 <-c("<asdfasdf 322332 sdd>", "<aasfd HTML 233223>", "<HTML FILE> CHECK ME OUT </HTML FILE>", "<HTML FILE>")
+str_extract_all(v5, pattern= "<(.+?)>.+?</\\1>")
+```
+```{r}
+# Problem 9
+
+encryptedcode ="clcopCow1zmstc0d87wnkig7OvdicpNuggvhryn92Gjuwczi8hqrfpRxs5Aj5dwpn0Tanwo Uwisdij7Lj8kpf03AT5Idr3coc0bt7yczjatOaootj55t3Nj3ne6c4Sfek.r1w1YwwojigO d6vrfUrbz2.2bkAnbhzgv4R9i05zEcrop.wAgnb.SqoU65fPa1otfb7wEm24k6t3sR9zqe5 fy89n6Nd5t9kc4fE905gmc4Rgxo5nhDk!gr"
+regex="[[:upper:].]+"
+
+str_replace_all(paste(unlist(str_extract_all(encryptedcode, regex)), collapse=""), pattern="[\\.]+", replacement= " ")
+```
+
