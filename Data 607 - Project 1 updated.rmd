@@ -1,0 +1,136 @@
+---
+title: "Data 607 - Project 1"
+author: "Habib Khan and Farhana Zahir"
+date: "September 21, 2019"
+output: 
+  html_document:
+    toc:   true
+    toc_float:  true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+In this project, you’re given a text file with chess tournament results where the information has some structure. Your job is to create an R Markdown file that generates a .CSV file (that could for example be imported into a SQL database) with the following information for all of the players:
+Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
+For the first player, the information would be:
+Gary Hua, ON, 6.0, 1794, 1605
+
+1605 was calculated by using the pre-tournament opponents’ ratings of 1436, 1563, 1600, 1610, 1649, 1663, 1716, and dividing by the total number of games played.
+
+If you have questions about the meaning of the data or the results, please post them on the discussion forum. Data science, like chess, is a game of back and forth…
+
+The chess rating system (invented by a Minnesota statistician named Arpad Elo) has been used in many other contexts, including assessing relative strength of employment candidates by human resource departments.
+
+All of your code should be in an R markdown file (and published to rpubs.com); with your data accessible for the person running the script.
+
+# Objective
+
+The objective of this project is import the text file and present it in a sophisticated way as the file is given in text form and is very unstructured
+
+```{r}
+# Loading the necessary libraries
+library(stringr)
+library(knitr)
+```
+
+
+```{r}
+# Reading the file
+chess <- read.delim("chessinfo.txt", header= FALSE, stringsAsFactors=FALSE)
+head(chess)
+```
+
+# Data cleaning Process
+
+```{r}
+chess2  <- chess[-c(1:4),]
+chess2 %>% head()
+```
+
+```{r}
+#  Check the file if it is character
+class(chess2)
+```
+
+```{r}
+# There are lines after every two rows which needs to be eliminated. Let's do that 
+
+name <- chess2[seq(from=1, to = length(chess2), by=3)]
+ratings <- chess2[seq(from=2, to = length(chess2), by=3)]
+```
+
+```{r}
+# Extracting relevant data
+new_id <- as.integer(str_extract(name, "\\d+"))
+new_name <- str_trim(str_extract(name, "(\\w+\\s){2,3}"))
+new_point <- as.numeric(str_extract(name, "\\d.\\d"))
+new_rate <- as.integer(str_extract(str_extract(ratings, "\\D\\d{3,4}\\D"), "\\d+"))
+new_state <- str_extract(ratings, "\\w\\w")
+new_oppid <- str_extract_all(str_extract_all(name, "\\d+\\|"), "\\d+")
+```
+
+```{r}
+# Now let's convert the lists into df
+op1 <- sapply(new_oppid, length)
+max <- seq_len(max(op1))
+op2 <- t(sapply(new_oppid, "[", i=max))
+df2 <- as.data.frame(op2)
+
+
+# Now let's convert these with ratings
+
+v <- data.frame(new_id, new_rate)
+df3 <- df2
+df3[] <- v$new_rate[match(unlist(df3), v$new_id)]
+head(df3)
+```
+
+```{r}
+# Now let's calculate the average to print the final table afterwards
+
+df3$opponentavg <- round(apply(df3,1,mean, na.rm=TRUE))
+head(df3)
+```
+
+```{r}
+# We are done with data cleaning, let's print the final table 
+new_table <- data.frame(new_id, new_name, new_state, new_point, new_rate, df3$opponentavg)
+
+# Table above is finalized but let's rename the column's name to make it more sophisticated
+
+colnames(new_table) <- c("ID", "Player_Name", "State", "Point", "PreRating", "OpponentRating")
+kable(new_table)
+```
+
+
+```{r}
+# Convert the file into csv
+
+write.table(new_table, file = "chessratings.csv", row.names=FALSE,sep = ",")
+```
+
+# Analysis and Visualization
+
+*Player's Pre Ratings compared to Opponent's Average Ratings*
+
+There seems to be a slight positive association between each player's ratings and the opponent's average pre rating. However, the R square is too low for any significant association.
+
+```{r}
+reg1<-lm(PreRating~ OpponentRating, data=new_table)
+summary(reg1)
+plot(new_table$`PreRating`, new_table$`OpponentRating`, xlim=c(800,1800), ylim=c(1000,1800), main="PreRating vs Oppononent avg Rating", xlab="Player PreRating", ylab="Opponent Average PreRating", abline(reg1))
+```
+
+*Pre Ratings statistics by State*
+
+We can see that highest number of players in the dataset are from MI and the lowest number from OH. Players from OH have a much higher mean Pre-ratings score compared to the other two states.
+
+```{r}
+boxplot(PreRating~State, data = new_table, xlab = "State",
+   ylab = "Preratings by State", main = "Statewise Average Player Pre-ratings")
+```
+
