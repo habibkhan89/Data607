@@ -1,0 +1,110 @@
+---
+title: "Data 607 - Assignment 4 / Working with tidy data"
+author: "Habib Khan"
+date: "September 28, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+(1) Create a .CSV file (or optionally, a MySQL database!) that includes all of the information above. You’re encouraged to use a “wide” structure similar to how the information appears above, so that you can practice tidying and transformations as described below.
+(2) Read the information from your .CSV file into R, and use tidyr and dplyr as needed to tidy and transform your data.
+(3) Perform analysis to compare the arrival delays for the two airlines.
+(4) Your code should be in an R Markdown file, posted to rpubs.com, and should include narrative descriptions of your data cleanup work, analysis, and conclusions. Please include in your homework submission:
+ The URL to the .Rmd file in your GitHub repository. and
+ The URL for your rpubs.com web page.
+
+# Libraries
+
+```{r}
+# Loading the required libraries
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(stringr)
+```
+
+# Load the .csv file from Github
+
+```{r}
+# Now let's load csv file
+
+airline <- read.csv("airlines.csv", sep=",", header=TRUE) # Due to some problem, I couldn't load the file from github
+airline
+
+```
+
+# Data cleaning process
+
+```{r, warning=FALSE}
+# Let's rename the variable's names first
+
+airline2 <- rename(airline, airline_name = X, flight_status= X.1)
+
+# Removing the NAs
+
+airline2 <- na.omit(airline2) 
+
+# Filling the missing values
+
+airline2[2,1] <- 'ALASKA'  
+airline2[4,1] <- 'AM WEST'
+
+# Now let's merge all the airport's names together and make a single variable with its frequency as second variable
+
+airline3 <- gather(airline2, airport_name, counts, 3:7)
+
+# Now let's get rid of periods in city's name
+
+airline3$airport_name <- str_replace_all(airline3$airport_name, "\\.", " ")
+
+# Now let's spread air flight_status into two columns
+
+airline4 <- airline3 %>% spread(flight_status, counts)
+
+# Let's rename 'on time' as we are going to do some calculations 
+
+airline4 <- rename(airline4, on_time = 'on time')
+kable(airline4)
+```
+
+# Data analysis
+
+```{r}
+# Now let's do some calculations for basic data analysis
+airline4 <- mutate(airline4, total_flights = delayed + on_time)
+airline4 <- mutate(airline4, delayed_ratio = delayed / total_flights)
+kable(airline4)
+
+
+
+# Now let's calculate the average delays by both airlines but first we have to sum average 
+
+airline5 <- airline4 %>%
+  group_by(airline_name) %>%
+  summarize(average_delays=mean(delayed_ratio))
+kable(airline5)
+```
+
+```{r}
+ggplot(airline4, aes(x=airport_name, y=on_time, group=airline_name, color=airline_name))+geom_line()+labs(x=" City's Name", y="On Time Flights")
+
+# Data visualization for delayed flights
+ggplot(airline4, aes(x=airport_name, y=delayed, group=airline_name, color=airline_name))+geom_line()+labs(x="City's Name", y="Delays")
+
+```
+
+
+# Conclusion
+
+According to the above plot, it is pretty clear that AM WEST has the most number of delays as compared with ALASKA. Hence it is highly recommended to management of AM WEST to work on their delays as it may cause loss to their business. On the other side, ALASKA has some delays too but comparatively their number of delays are lower than AM WEST. If we take a look at first plot, it shows that AM WEST has more number of on-time flights on an average as compared with ALASKA other than in San Francisco and Seattle. 
+For the sake of business recommendation, it seems that overall AM WEST is performing better than ALASKA but it needs to improve its business operations in San Francisco and Seattle where ALASKA is doing better. 
