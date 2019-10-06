@@ -1,0 +1,120 @@
+---
+title: "Project02 Dataset2"
+author: "Farhana Zahir, Habib Khan"
+date: "10/06/2019"
+output: 
+  html_document:
+    toc:   true
+    toc_float:  true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE}
+library("tidyverse")
+library("ggplot2")
+```
+
+## Introduction 
+
+Dataset 2 Unemployment rate, Courtesy of Erinda Budo
+
+For this project we are required to use 3 wide datasets to practice tidying,cleaning and analysis of data. We have been asked to creat csv files from the datasets and import into R. Then we are required to use tidyr and dplyr to clean and analyse the data.
+
+This particular dataset was taken from the World Bank Global Economic Monitor. This dataset contains unemployment rates from 88 countries from year 1990 through 2017.It can be found:  https://github.com/ErindaB/Other.
+
+The data needs to be transformed from wide to long format. The discussion post asked to investigate annual unemployment rates from 2011 to 2015 of 71 countries and answer the following questions:
+
+1)For the five year period from 2011 to 2015, what's the average annual unemployment rate of each country?
+2)For the five year period from 2011 to 2015, what's the distribution of the average annual unemployment rate?
+3)For the five year period from 2011 to 2015, what's the overall trend of the world's annual unemployment rate?
+
+## Load the data
+
+We can see that this file is very structured and the missing values are already stored as NAs in the file.
+
+```{r}
+unemployment<-read.csv("https://raw.githubusercontent.com/zahirf/Data607/master/Unemployment_Rate.csv")
+```
+
+## Tidy the data
+
+The data is structured as a very wide format, We will use the gather function to convert this to long format and bring the country names and values in two separate columns
+
+```{r}
+unemployment<-unemployment%>%
+  gather(key="country", value="numbers", Advanced.Economies:South.Africa) #convert to long format
+head(unemployment,5)
+```
+
+The analysis required in the questions ask for only data from 2011 to 2015, so we will use subset to get only that data. We also need to rename the first column from X to year. We also need to drop the NAs.
+
+```{r}
+names(unemployment)[1]<-"year"
+unem2011to2015<-subset(unemployment, year>=2011 & year <=2015)
+unem2011to2015<-drop_na(unem2011to2015, numbers)
+```
+
+## Analysis and Visualization
+
+1)For the five year period from 2011 to 2015, what's the average annual unemployment rate of each country?
+
+```{r}
+unem1<-unem2011to2015%>%  
+  group_by(country)%>%
+  summarize(average=mean(numbers))%>%
+  arrange(desc(average))
+```
+
+Let us look at the top ten countries with highest unemployment rates. We see that North Macedonia tops the list at more than 29% average unemployment rate in that period.
+
+```{r}
+unem1%>%
+  top_n(10,average)
+
+```
+Let us know look at the ten countries with the best employment rates. We see that switzerland and Vietnam are the best employment generators.
+
+```{r}
+unem1%>%
+  top_n(-10,average)
+```
+
+2)For the five year period from 2011 to 2015, what's the distribution of the average annual unemployment rate?
+
+We believe the question calls for a histogram of the unemployment rates during that period.We see that the global average ranged someweher near 8%, however there are a few outliers with unemployment rate close to 30% as we saw in the top 10 in the dataset.
+
+```{r}
+ggplot(unem2011to2015, aes(numbers))+
+  geom_histogram(binwidth=1, aes(y=..density..))+
+  geom_vline(aes(xintercept=mean(numbers)),color="blue", linetype="dashed", size=1)+
+  geom_density(alpha=.2, fill="#FF6666")+
+  ggtitle("Distribution of global Unemployment rates 2011 to 2015")
+```
+
+3)For the five year period from 2011 to 2015, what's the overall trend of the world's annual unemployment rate?
+
+This calls us to create world average unemployment for the years 2011 and 2015.We will now group by year instead of country.We see that the world unemplyment rate spiked to 8.8% in 2013 but has come down to 8.2% in 2015
+
+```{r}
+unem2<-unem2011to2015%>%  
+  group_by(year)%>%
+  summarize(average=mean(numbers))
+
+ggplot(unem2, aes(x=year, y=average))+
+  geom_line(color='steelblue', size=1)+
+  ggtitle("Trend of world average unemployment rate 2011 to 2015")
+```
+
+## Conclusion
+
+Even though the world unemployment rate fell in 2015, most of the European countries like Spain and Greece still had a very high unemployment rate in 2015 because of economic downturns. Only Switzerland seemed to be on the other end.The situation has improved in 2019 with unemployment in those countries close to 14%. Asian countries like Singapore seemed to have aced the economy game in 2015 and had the lowest unemployment.
+
+It will be interesting to do a regionwise analysis using 2019 data to check what the most recent trends are.
+
+
+
+
+

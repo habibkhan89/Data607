@@ -1,0 +1,169 @@
+---
+title: "Project02Dataset1"
+author: "Farhana Zahir, Habib Khan"
+date: "10/06/2019"
+output: 
+  html_document:
+    toc:   true
+    toc_float:  true
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE}
+library("tidyverse")
+library("ggplot2")
+require(maps)
+```
+
+### Introduction 
+
+Dataset 1 UN Migration, Courtesy of Salma Elshahawy 
+
+For this project we are required to use 3 wide datasets to practice tidying,cleaning and analysis of data. We have been asked to creat csv files from the datasets and import into R. Then we are required to use tidyr and dplyr to clean and analyse the data.
+
+This dataset is taken from the UN site at https://www.un.org/en/development/desa/population/migration/data/estimates2/estimates15.asp. 
+
+The dataset contains estimated of international migration by age, sex and origin.We worked on the dataset that contains data by destination and origin and tried to answer the following questions from Salma:
+
+1) How many migrants the US had from 1990 to 2019 and from which countries? What were the top ten countries migrants came from?
+2) which year had the most immigrant population in the US
+
+
+### Load the dataset
+
+The data has a lot of empty fields, so it required converting the empties to NAs while importing so that cleaning would be easier using tidyr
+```{r}
+migrant <- read.csv("https://raw.githubusercontent.com/zahirf/Data607/master/UN_Migrant.csv", sep = ",", header = FALSE, stringsAsFactors=FALSE,  na.strings = c("", "NA")) #import converting all empties to NA
+```
+
+### Tidy the dataset
+
+There is a lot of cleaning needed with this one. The steps are outlined below:
+
+1. The dataset had a few blank lines before the headers, so we did not import the header. We see that this dataset is very wide with the names of countries in the columns. Row no 16 has all the country names so for now we are using that row as header
+2. Removed the columns 2, 4:9 that we do not require as we will do a country level analysis and not a regional analysis
+3. Fill the missing headers year and destination country
+4. Drop the NA values using the dplyr drop_na function to remove NAs in the year column
+5. There are a lot of blank columns after the last field Zimbabwe so we only select the columns with values
+6. The header rwo is now duplicated so we remove the first row
+
+```{r}
+colnames(migrant) <- migrant[16, ] #Need to use the country names in row 16 as headers automatically, it is too much to do manually
+migrant<-migrant[,-(4:9)] #removing columns we won't need
+migrant<-migrant[,-2]
+colnames(migrant)[1:2] <- c("year","destination") #headers for the missing fields
+migrant<-drop_na(migrant,year) #drop all rows with NA in the year column as those are just blank rows, rows 1 to 15 had information about the dataset and needed to be dropped.
+migrant<-migrant%>%
+  select_if(~sum(!is.na(.)) > 0) #there were many extra blank columns after Zimbabwe that needed to be removed
+migrant <- migrant[-1 ,] #remove duplicate column for country names
+head(migrant,2) #check the first 2 rows
+```
+
+We are only going to do out analysis on the migrants whose destination is the US, so we filter US using subset. We then remove the US column which is now redundant as this dataset only contains data for US as destination.
+
+We then convert the data to long format. 
+
+Although the column numbers which contains migration numbers is stated numeric, the commas in between will cause problems when analysing, so we remove those commas.
+
+```{r}
+migrant1<-subset(migrant, destination=="United States of America") #only filter the US Data 
+migrant1<-migrant1[,-2] #Removing the US column as this data is all about US as destination
+migrant1<-migrant1%>%
+  gather(key="country", value="numbers", Afghanistan:Zimbabwe) #convert to long format
+migrant1<-na.omit(migrant1) #remove the NAs
+str(migrant1)
+migrant1$numbers<- as.numeric(gsub(",", "", as.character(migrant1$numbers))) # convert character to numeric so summarization and other analysis may be done.
+
+```
+
+### Analysis and Visualization
+
+1)Top ten places where immigrants came from in the last 19 years to the US
+
+We can see that the top three countries where immigrants came from in the last 19 years are Mexico, China and Puerto Rico.
+
+```{r}
+migrant2<-migrant1%>%
+  group_by(country)%>%
+  summarize(totalmigrants=sum(numbers))%>%
+  top_n(10,totalmigrants)%>%
+  arrange(desc(totalmigrants))
+migrant2 
+```
+
+Have migration patterns changed in the last 5 years?
+
+In the last three years, we see that the top 3 countries whose citizens are migrating to the US are Vietnam, Korea and Guatemala accounting for almost 35% of total migration into the US.
+
+```{r}
+migrant3<-migrant1%>%
+  filter(year>=2014 & year<=2019)%>%
+  group_by(country)%>%
+  summarize(totalmigrants=sum(numbers))%>%
+  mutate(percent=totalmigrants/sum(totalmigrants)*100)%>%
+  top_n(10,percent)%>%
+  arrange(desc(percent))
+
+ggplot(migrant3, aes(x = country, y = percent, fill=country )) +
+  geom_col(position = "dodge") +
+  ggtitle("US: Top ten countries by immigrants from 2014 to 2019")
+
+```
+
+2)Which year had the most immigrants moving into the US?
+
+we can see that 2019 had the most number of immigrants into the US, in fact the no of immigrants are increasing every year
+```{r}
+migrant4<-migrant1%>%
+  group_by(year)%>%
+  summarize(totalmigrants=sum(numbers))%>%
+  top_n(10,totalmigrants)%>%
+  arrange(desc(totalmigrants))
+
+ggplot(migrant4, aes(x = year, y =totalmigrants)) +
+  geom_col(position = "dodge") +
+  scale_y_discrete("totalmigrants")
+  
+```
+
+Let us plot where the immigrants to US during 1990 to 2019 came from using a map.
+
+```{r}
+world_map <- map_data("world")
+names(migrant2)[1]="region"
+mig_map <- left_join(world_map, migrant2, by = "region")
+ggplot(mig_map, aes(map_id = region, fill = totalmigrants/1000))+
+  geom_map(map = mig_map,  color = "white")+
+  expand_limits(x = mig_map$long, y = mig_map$lat)+
+  ggtitle("Total migrants into the US 1990 to 2019")
+
+```
+
+Let us do the same for the last 5 years
+```{r}
+migrant5<-migrant1%>%
+  filter(year>=2014 & year<=2019)%>%
+  group_by(country)%>%
+  summarize(totalmigrants=sum(numbers))
+
+world<- map_data("world")
+names(migrant5)[1]="region"
+mig_map1 <- left_join(world_map, migrant5, by = "region")
+ggplot(mig_map1, aes(map_id = region, fill = totalmigrants/1000))+
+  geom_map(map = mig_map1,  color = "white")+
+  expand_limits(x = mig_map1$long, y = mig_map1$lat)+
+  ggtitle("Total migrants into the US 2014 to 2019")
+
+```
+
+### Conclusion
+
+Our analysis shows that even though in the last 19 years overall, migration into the US has been dominated by the people from Mexico and surroundings, China, India and Canada, recently in the last 5 years the pattern has emerged to include more countries from Africa, South America and Asia.
+
+A more proper analysis will include identifying trends for every 5 years.
+
+
+
+

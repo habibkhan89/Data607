@@ -1,0 +1,167 @@
+---
+title: "Data 607 - Project 2 - Updated"
+author: "Habib Khan & Farhana Zahir"
+date: "October 6, 2019"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Heart Diseases dataset
+
+Courtesy of AbdelMalek Hajjam
+
+This database contains 76 attributes, but all published experiments refer to using a subset of 14 of them. In particular, the Cleveland database is the only one that has been used by ML researchers to this date. The "goal" field refers to the presence of heart disease in the patient. It is integer valued from 0 (no presence) to 4. 
+Attribute Information: 
+1. age 
+2. sex 
+3. chest pain type (4 values) 
+4. resting blood pressure 
+5. serum cholestoral in mg/dl 
+6. fasting blood sugar > 120 mg/dl
+7. resting electrocardiographic results (values 0,1,2)
+8. maximum heart rate achieved 
+9. exercise induced angina 
+10. oldpeak = ST depression induced by exercise relative to rest 
+11. the slope of the peak exercise ST segment 
+12. number of major vessels (0-3) colored by flourosopy 
+13. thal: 3 = normal; 6 = fixed defect; 7 = reversable defect
+
+
+Objective:
+
+As per the questions asked in discussion 5, there are some certain objectives which need to be met by using dplyr and tidyr packages.
+1. Rename all the column's names and make them in a sophisticated manner
+2. Make some data wrangling to through making some categories, filters, etc
+3. Data analysis 
+
+
+```{r}
+# Loading the required libraries
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+```
+
+
+```{r}
+# First of all, let's import the dataset in r
+
+heartd <- read.csv("heart.csv", header=TRUE, stringsAsFactors = FALSE, na.strings=c("", "NA")) # Importing the dataset and setting the empty values to NA
+head(heartd)
+```
+
+The above data frame shows that almost most of the variable's names are not represented in an easy way and by just reading the table, almost no one can understand what these values mean. 
+
+```{r}
+# Firstly, let's rename all the columns to make them easy to understand
+
+heartd <- heartd %>%
+  rename(age = ï..age) %>% 
+  rename(sex = sex) %>% 
+  rename(chest_paintype = cp) %>% 
+  rename(resting_bp = trestbps) %>% 
+  rename(cholesterol_in_mg = chol) %>% 
+  rename(fasting_bloodsugar = fbs) %>% 
+  rename(resting_ecg = restecg) %>% 
+  rename(max_heartrate_ach = thalach) %>% 
+  rename(exercise_induce_angina = exang) %>% 
+  rename(stdepression_induced_byexercise = oldpeak) %>% 
+  rename(slope_ofpeak_exercise = slope) %>% 
+  rename(number_majorvessels = ca) %>% 
+  rename(effect = thal)
+head(heartd)
+```
+
+
+```{r}
+# Now let's rename the labels instead of the values. In the file, it does not have any labels which makes it even harder to understand the data. We are going to replace the labels with values to make it easy to understand
+heartd1 <- heartd # Making another copy of data frame just in case if anything goes wrong
+
+
+# Changing the class types and adding labels where it needs
+heartd1$sex <- as.factor(heartd1$sex) # Changing the class type to factor to give labels
+heartd1$sex = factor(heartd1$sex, labels= c("Female", "Male")) # Add the values to 
+
+heartd1$chest_paintype <- as.factor(heartd1$chest_paintype)    # Changing the data type into factor
+heartd1$chest_paintype = factor(heartd1$chest_paintype, labels= c ("Type 1 Angina", "Type 2 Angina", "Non-Angina Pain", "Asymptomatic"))
+
+heartd1$resting_ecg <- as.factor(heartd1$resting_ecg)     # Changing the data type into factor to add labels
+heartd1$resting_ecg = factor(heartd1$resting_ecg, labels = c("Normal", "having ST-T wave abnormality", "left ventricular hypertrophy"))
+
+heartd1$fasting_bloodsugar <- as.factor(heartd1$fasting_bloodsugar) # Changing the data type to factor to add labels
+heartd1$fasting_bloodsugar = factor(heartd1$fasting_bloodsugar, levels= c(0,1), labels = c("< 120 mg/dl", "> 120 mg/dl"))
+
+heartd1$exercise_induce_angina <- as.factor(heartd1$exercise_induce_angina) # Changing the data type into factor
+heartd1$exercise_induce_angina = factor(heartd1$exercise_induce_angina, levels= c(0,1), labels = c("No", "Yes"))
+
+
+heartd1$slope_ofpeak_exercise <- as.factor(heartd1$slope_ofpeak_exercise) # Changing the data type into factor
+heartd1$slope_ofpeak_exercise = factor(heartd1$slope_ofpeak_exercise, levels= c(1,2,3), labels = c("Unsloping; value", "flat; value", "downloping"))
+
+
+head(heartd1)
+```
+
+Now that we have all our data is in good shape; all column's names are updated and the labels are placed to make it understandable. Let's try to filter our data with different classes to explore it further. Some of the above variables such as 'target' would be useful for machine learning algorithms as this data is typically used for ML practice in Kaggle. 
+
+
+# Data wrangling and visualization
+
+Due to the nature of data, we are going to select few variables from the dataset to make the analysis and make it easy to understand.
+
+```{r}
+heartd2 <- heartd1 %>% 
+  group_by(sex) %>% 
+  select(age, sex, chest_paintype, resting_bp, resting_ecg, cholesterol_in_mg, max_heartrate_ach, effect) %>% 
+  arrange(effect) %>% 
+  ungroup()
+head(heartd2)
+```
+
+```{r}
+ggplot(heartd2, aes(x=heartd2$resting_bp, y=heartd2$age, color= sex))+geom_point()
+```
+
+
+As we can see that with the increase in age, resting blood pressure also increases. Hence, it has positive relationship. Although it does not seem to have linear line but there are some other factors as well which affects the blood pressure. So we can say to some extent, age affects the resting blood pressure. 
+
+
+Now, let's see the relationship between AGE and SERUM CHOLESTEROL
+
+```{r}
+ggplot(heartd2, aes(x=heartd2$cholesterol_in_mg, y=heartd2$age, color=sex))+geom_point()
+```
+
+Same goes with the above plot, here it shows more upward relationship. It shows that as the age grows, cholesterol increases as well. Hence, it has positive relationship. 
+
+
+```{r}
+ggplot(heartd2, aes(x= heartd2$effect, y=heartd2$cholesterol_in_mg, color=sex))+geom_point()
+```
+
+The above plot shows that there is relationship between cholesterol and heart attack's effects. As the cholesterol increases, it can cause more damage to the heart and overall patient's health eventually. 
+
+```{r}
+heartd2 %>% 
+  group_by(sex) %>% 
+  summarize(avg_cholesterol = mean(cholesterol_in_mg), avg_maxheartrate_achieved= mean(max_heartrate_ach))
+```
+
+The overall average cholesterol of the respondents were 261.30 for females and 239.28 for males. Likewise, average maximum heart rate achieved for females is 151.12 while it is 148.96 for males. 
+
+
+# Conclusion
+
+After going through the data cleaning process, it has seen that the heart's disease is dependent on many factors such as cholesterol, blood pressure, etc. For the sake of simplicity for this project, we checked the relationships of cholesterol and max heart rate achieved  with the chances of having adverse effects on both males and females. It has proven that with the increases in age, cholesterol and heart rates are also increased which eventually leads to heart diseases and causes severe effects. THe dataset contained many other variables which were not included in the conclusion and they can eventually be taken as well to see further effects caused by other factors. 
