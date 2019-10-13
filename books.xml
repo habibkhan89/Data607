@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<languagesBooks>
+  <book>
+    <Title>Winning</Title>
+    <Authors>Jack Welch</Authors>
+    <Pages>384</Pages>
+    <Publishing.year>2009</Publishing.year>
+
+  </book>
+  <book>
+    <Title>R for everyone</Title>
+    <Authors>Jared Lander</Authors>
+    <Pages>528</Pages>
+    <Publishing.year>2017</Publishing.year>
+  </book>
+  <book>
+    <Title>R for data science</Title>
+    <Authors>Hadley Wickham and Garrett Grolemund</Authors>
+    <Pages>492</Pages>
+    <Publishing.year>2016</Publishing.year>
+  </book>
+</languagesBooks>
