@@ -1,0 +1,62 @@
+---
+title: "Data 607 - Netflix's Recommender System"
+author: "Habib Khan"
+date: "November 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Your task is to analyze an existing recommender system that you find interesting.  You should:
+
+Perform a Scenario Design analysis as described below.  Consider whether it makes sense for your selected recommender system to perform scenario design twice, once for the organization (e.g. Amazon.com) and once for the organization's customers.
+Attempt to reverse engineer what you can about the site, from the site interface and any available information that you can find on the Internet or elsewhere.
+Include specific recommendations about how to improve the site's recommendation capabilities going forward. 
+Create your report using an R Markdown file, and create a discussion thread with a link to the GitHub repo where your Markdown file notebook resides.  You are not expected to need to write code for this discussion assignment.
+
+
+
+## Scenario Design Analysis - Netflix
+
+
+1- Who are the target users?
+
+The target users are the people who has subscribed for Netflix's account. Netflix is an online media service provider which has huge database of different local and international movies, series, cartoon and a lot of other stuff to attract and retain their customers globally. As of April 2019, Netflix had around 148 million paid subscribers globally. To keep them attracted and retained with them, netflix has created a wonderful recommender system which identifies the pattern and behavior of the users and suggests those movies or series to them. 
+
+2- What are the key goals?
+
+As I said before, the key goal behind their recommender system is to retain the interest of its subscribers depending on their interests, pattern and behaviors. 
+
+3- How can I help them achieving their goals?
+
+Well, it seems as per the studies and my personal observation with netflix that they are doing pretty good attracting their customers through a solid system of recommender system. If I open netflix, there are usually those type of movies and series showing up which might be interesting for me depending on the pattern of movies I have watched from my account. The only problem can be if the same person has shared its account with friends or family then it may mess up with the recommender system as different people may have different interests or likes and dislikes. 
+
+
+# Reverse Engineering
+
+Netflix uses Because You Watched-Technique which is also called (BYW) which emphasises on the data from the user and make a pattern through asking likes and interests while creating a user profile. It does not rely on the rating technique. This techniques read the user's data, interest and pattern and gradually start creating recommender system and it gets more and more better as user keeps watching movies. Following is the homepage of netflix for the accountholder which shows different movies and series that might be interesting for them.
+
+```{r echo=FALSE}
+knitr::include_graphics('netflix.png')
+```
+
+Now if you take a look at the picture above, it shows the top picks for Joshua first which had been built up depending on the types of movies he might have liked or watched before. Furthermore, since he had watched Narcos before, netflix's recommender system is suggesting similar type of movies and shows such as Surviving Escobar, Comorroh and some other similar kind of shows. Furthermore, to keep them attracted towards watching netflix, they also suggest some new releases which again is built up on the pattern, interest and behavior of the user. 
+
+# How does it work?
+
+The way they capture the data is they take a preliminary interested movies or shows by the users which is then pushed to their main database. After that the data is used to use Machine Learning techniques to find out the interests of the user and then finally the recommendations are given. It is not initially much developed but with the passage of time, user history and data, netflix's recommender system gets better and it starts predicting much better interests of the user.
+
+```{r echo=FALSE}
+knitr::include_graphics('netflix1.png')
+knitr::include_graphics('netflix2.png')
+```
+
+
+# Recommendations
+
+I think at this point they are doing great job with their current machine learning algorithm through looking at user's interest and behavior and then creating suggestions. The only problem I see is the sharing of account with friends and family. If that's the case, I recommend netflix should restrict the customers not to use each other's username and if some one tries, it should be blocked which can be easily done through tracking the IP address. Now if we talk about maximum number of users which is 5 in one of their account types, so users share their accounts with other friends and family. It confuses the algorithm e.g. if I like to watch action movies but my brother likes to watch thriller, the recommender system suggesting to me would be less accurate. 
+
