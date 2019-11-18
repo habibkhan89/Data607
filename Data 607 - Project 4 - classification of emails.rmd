@@ -1,0 +1,191 @@
+---
+title: "Data 607 - Project 4"
+author: "Habib Khan"
+date: "November 16, 2019"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+In this project, I will be importing two datasets as training dataset and testing dataset to identify the emails as spam or ham. Two different datasets were downloaded from the given website. Each file consists of texts containing spam and ham emails which were needed to see classification of both email types. The objective was to find what kind of texts each email type mostly has for which I have used sentiment analysis. 
+
+## Goal
+For this project, you can start with a spam/ham dataset, then predict the class of new documents (either withheld from the training dataset or from another source such as your own spam folder).   One example corpus:   https://spamassassin.apache.org/old/publiccorpus/ 
+
+
+```{r message=FALSE}
+# Loading the required libraries
+
+library(dplyr)
+library(tidytext)
+library(tidyverse)
+library(tm)
+library(stringr)
+library(wordcloud)
+library(DescTools)
+```
+
+# Importing the dataset for training and testing purposes
+
+As I said before, I downloaded two different folders. Each containing spam and ham emails. I downloaded them and later I will be pointing each file to their specific working directory. 
+
+```{r}
+training_spam <- "C:/Users/hukha/Desktop/MS - Data Science/Data 607 -/Project for Data 607/Data 607/spamham/spam_2"
+training_ham <- "C:/Users/hukha/Desktop/MS - Data Science/Data 607 -/Project for Data 607/Data 607/spamham/easy_ham"
+```
+
+
+# Creating function to clean the data conveniently using Corpus
+
+Here, I created two files which are linked to their specific directory where all the spam and ham emails are present. 
+
+```{r}
+# Let's connect the spam, ham and testing_ham to their directory sources and connect it with Corpus
+
+spam <- training_spam %>% 
+  DirSource() %>% 
+  Corpus()
+
+
+ham <- training_ham %>% 
+  DirSource() %>% 
+  Corpus()
+```
+
+
+# Converting the data into matrix to create wordcloud
+
+## Working with spam dataset first
+
+Initially, I tried creating a function which would be easier to use later while using tm package but for some reason I could not figure out a problem. Below, I used Corpus to clean the data through its base functions as shown below in the chunk of code. I did same with both spam2 and ham2 which were later converted into matrix to use wordcloud. 
+
+```{r warning=FALSE}
+# Converting the data into Corpus and removing data using tm package
+spam2 <- Corpus(VectorSource(spam)) # Saving the tweets in vector 'words' while x is column's name which was given randomly while importing
+
+spam2 <- tm_map(spam2, tolower)
+spam2 <- tm_map(spam2, removeNumbers)
+spam2 <- tm_map(spam2, removePunctuation)
+spam2 <- tm_map(spam2, stripWhitespace)
+spam2 <- tm_map(spam2, removeWords, stopwords("english"))
+spam2 <- tm_map(spam2, removeWords, c("will")) # This sentence would be helpful for later to remove any unnecessary words
+
+# Now let's build a matrix and dataframe to show the number of words to make wordcloud
+
+tdm_s <- TermDocumentMatrix((spam2))
+m_s <- as.matrix(tdm_s)
+v_s <- sort(rowSums(m_s), decreasing=TRUE)
+d_s <- data.frame(spam2= names(v_s), freq=v_s)
+head(d_s,40)
+
+# Now let's create wordcloud for spam data to see how it looks like
+
+set.seed(224)
+wordcloud(words=d_s$spam2, freq=d_s$freq, min.freq=500, max.words =2000, random.order=FALSE, decreasing= TRUE, rot.per=0.05, colors=brewer.pal(8,"Dark2"))
+```
+
+In the above wordcloud, we can easily see that the wordclouds are mostly very weird such as trn, brn, jul, etc which does not make any sense in original emails and I believe we would not see these kind of words in ham emails. 
+
+## Working with ham dataset 
+
+```{r warning=FALSE}
+# Converting the data into Corpus and removing data using tm package
+ham2 <- Corpus(VectorSource(ham)) # Saving the tweets in vector 'words' while x is column's name which was given randomly while importing
+
+ham2 <- tm_map(ham, tolower)
+ham2 <- tm_map(ham, removeNumbers)
+ham2 <- tm_map(ham, removePunctuation)
+ham2 <- tm_map(ham, stripWhitespace)
+ham2 <- tm_map(ham, removeWords, stopwords("english"))
+ham2 <- tm_map(ham, removeWords, c("will", "the")) # This sentence would be helpful for later to remove any unnecessary words
+
+# Now let's build a matrix and dataframe to show the number of words to make wordcloud
+
+tdm_h <- TermDocumentMatrix((ham2))
+m_h <- as.matrix(tdm_h)
+v_h <- sort(rowSums(m_h), decreasing=TRUE)
+d_h <- data.frame(ham2= names(v_h), freq=v_h)
+head(d_h,40)
+
+# Now let's create wordcloud for spam data to see how it looks like
+
+set.seed(224)
+wordcloud(words=d_h$ham2, freq=d_h$freq, min.freq=700, max.words =2000, random.order=FALSE, decreasing= TRUE, rot.per=0.05, colors=brewer.pal(8,"Dark2"))
+```
+
+Above wordcloud shows that most words are from, 2002, with, for, received, etc which perfectly makes sense. There are always these type of vocabularies which are usually used in original emails. 
+
+
+# Sentiment analysis 
+
+Here, I have used sentiment analysis in both spam and ham emails to see which were mostly positive and negative words in both datasets. 
+
+## Ham emails
+
+```{r}
+# Let's create a function dtm which will be used later to create sentiment analysis
+
+dtm1 <- function(corpus) {
+  dtm <- DocumentTermMatrix(corpus)
+  removeSparseTerms(dtm, 1-(10/length(corpus)))
+}
+
+spam_dtm <- dtm1(spam)
+ham_dtm <- dtm1(ham)
+```
+
+I had to create another function above in order to use corpus and especially for sentiment analysis. 
+
+```{r}
+# Now let's create sentiment analysis for ham mails
+
+ham_td <- tidy(ham_dtm)
+ham_senti <- ham_td %>% 
+  inner_join(get_sentiments("bing"), by= c(term="word"))
+
+# Visualizing the sentiment analysis 
+
+ham_senti %>% 
+  count(sentiment, term, wt=count) %>% 
+  ungroup() %>% 
+  filter(n>= 100) %>% 
+  mutate(n= ifelse(sentiment=="negative", -n, n)) %>% 
+  mutate(term=reorder(term,n)) %>% 
+  ggplot(aes(term, n, fill=sentiment))+ geom_bar(stat="identity")+ylab("Sentiment analysis on Ham emails")+coord_flip()
+```
+
+In the ham emails, like, good, work, clean, free and right are mostly used words which are positive while on the other hand, unknown, problem, bad, error are the most frequently used words in ham emails. 
+
+## Spam emails
+
+```{r}
+# Now let's use sentiment analysis for spam emails
+spam_td <- tidy(spam_dtm)
+spam_senti <- spam_td %>% 
+  inner_join(get_sentiments("bing"), by= c(term="word"))
+
+# Visualizing the sentiment analysis 
+
+spam_senti %>% 
+  count(sentiment, term, wt=count) %>% 
+  ungroup() %>% 
+  filter(n>= 75) %>% 
+  mutate(n= ifelse(sentiment=="negative", -n, n)) %>% 
+  mutate(term=reorder(term,n)) %>% 
+  ggplot(aes(term, n, fill=sentiment))+ geom_bar(stat="identity")+ylab("Sentiment analysis on spam emails")+coord_flip()
+
+```
+
+On the other hand if we take a look at the sentiment analysis of spam emails, we can see words like free, like, best are the most frequently used to attract the users while lose, unknown and risk are the negative words which is I believe identified by email domain.
+
+# Conclusion
+
+There were two datasets containing spam and ham emails which were downloaded from the given source. These were later cleaning using Corpus and then wordcloud were developed for both types of email. There were quite few words in both types of emails which were positive and negative in terms of sentiments. Words like from, 2002, received, for, etc were the frequently used words in ham emails while on the other side, words like free, like, best, etc were the frequent words used in spam emails. 
+
