@@ -1,0 +1,98 @@
+---
+title: "Data 607 - Week 12 - Migrating data from MySQL to NoSQL"
+author: "Habib Khan"
+date: "November 23, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+For this assignment, you should take information from a relational database and migrate it to a NoSQL database of your own choosing. For the relational database, you might use the flights database, the tb database, the "data skills" database your team created for Project 3, or another database of your own choosing or creation. For the NoSQL database, you may use MongoDB (which we introduced in week 7), Neo4j, or another NoSQL database of your choosing. Your migration process needs to be reproducible.  R code is encouraged, but not required.  You should also briefly describe the advantages and disadvantages of storing the data in a relational database vs. your NoSQL database. 
+
+I chose to select the data from project 3 which is located in my local database in MySQL and I will migrate the whole data in MongoDB. 
+
+
+```{r}
+# Loading the required libraries
+
+library(DBI)
+library(RMySQL)
+library(knitr)
+library(mongolite)
+library(tidyverse)
+library(kableExtra)
+```
+
+
+
+# Connecting to the database 
+
+```{r}
+database <- dbDriver("MySQL")
+connection <- dbConnect(database, user="root", password="password", host="127.0.0.1", port=3306, dbname="data")
+dbListTables(connection)
+```
+
+# Reading the data from database 
+
+```{r}
+# Creating a vector to save the query
+
+datascience_skills <- "select * from final" # 
+
+# Getting the tables from the database
+
+datascience_table <-dbGetQuery(connection, datascience_skills)
+head(datascience_table)
+```
+
+# Connecting to MongoDB
+
+```{r}
+data_mongo <- mongo("datascience_table")
+data_mongo
+```
+
+# Migrating data to MongoDB
+
+```{r}
+data_mongo$insert(datascience_table)
+
+
+datascience_df <- data_mongo$find('{}')
+datascience_df %>% 
+  head ()
+
+```
+
+
+# Validate the data in MongoDB
+
+```{r message=FALSE, out.width='70%', fig.show='hold'}
+knitr::include_graphics('mongoDB.png')
+knitr::include_graphics('mongoDB2.png')
+
+```
+
+The above pictures were taken by me while checking if the data were migrated to mongoDB or not through command prompt. First, the collections were checked as shown above in first screen shot. It shows that there are four dbs. "test" was later created while migrating and "datascience_table" was then moved in "test" database. For more clarity, I used "db.datascience_table.find()" function to see if it contains the relevant data. It shows that all the data were actually migrated from MySQL to MongoDB.
+
+# Disconnect the database
+
+```{r}
+dbDisconnect(connection)
+```
+
+# Conclusion
+
+For this assignment, I chose to select the datascience skills which I scraped from different websites in Project 3. I installed MongoDB 4.2 community edition and connected the database for both MongoDB and MySQL. I chose the path in environment variables and then opened the database through command prompt as shown in above pictures. For data migration, I connected R with MySQL database and then created db in MongoDB and later I moved all the data over there. I used library "mongolite" to access MongoDB.
+
+
+# Advantages and disadvantages of using relational databases and NoSQL
+
+Both relational and NoSQL has its own advantages and disadvantages. Relational databases are stored in a very consistent manner and there are some certain columns which has rows(values). It is built over time and easy to use for data analysis as well but it is quite hard to keep big data in relational databases as it's performance gets affected. 
+
+On the other hand, NoSQL can store any type of data but the consistency is lacking there. It's maintenance is easy as compared with relational databases. In NoSQL, performance is much better as it does not seperate infrastructure like relational database but it supports caching in system memory. 
