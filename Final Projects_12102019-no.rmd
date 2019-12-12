@@ -1,0 +1,474 @@
+---
+title: "Do Americans support President Trump's impeachment"
+author: "Randall Thompson, Abdelmalek Hajjam, Eunkyu Hahm, Habib Khan"
+date: "12/9/2019"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+# Introduction
+
+In this project, we are going to see if Americans support President Trump's impeachment inquiry or not. For that purpose, we have taken the data from three different sources i.e. Washington post was scraped to see the road to impeachment, getting data from five thirty eight.com and then tweets were taken from twitter. The reason behind this was to see if Americans support impeachment without biasness. 
+
+
+# Loading libraries
+
+
+```{r message=FALSE}
+library(knitr)
+library(tm)
+library(dplyr)
+library(twitteR)
+library(wordcloud)
+library(wordcloud2)
+library(ggwordcloud)
+library(tidyverse)
+library(tidytext)
+library(DT)
+library(knitr)
+library(scales)
+library(ggthemes)
+library(RColorBrewer)
+library(RCurl)
+library(XML)
+library(stringr)
+library(ggplot2)
+library(htmlwidgets)
+library(rvest)
+library(data.table)
+library(DT)
+library(kableExtra)
+library(DBI)
+library(RMySQL)
+library(readr)
+library(lattice)
+```
+
+# Scrapping the data from Washington Post
+
+## Road to impeachment
+
+The House of Representatives is engaged in a formal impeachment inquiry of President Trump. It is focused on his efforts to secure specific investigations in Ukraine that carried political benefits for him — including aides allegedly tying those investigations to official U.S. government concessions. To get the data for Trump-Ukraine impeachment timeline of relevant events leading to Trump Impeachment inquiry, we decided to scrap the following website:
+
+https://www.washingtonpost.com/graphics/2019/politics/trump-impeachment-timeline
+
+
+```{r }
+#First we create an empty data frame for our function to fill. We call it ukraine.
+ukraine <- data.frame( Title = character(),
+                       Description = character(),
+                       stringsAsFactors=FALSE
+                       ) 
+url <- "https://www.washingtonpost.com/graphics/2019/politics/trump-impeachment-timeline/"
+var <- read_html(url)
+title <- var %>% 
+    html_nodes("div.pg-card .pg-card-title") %>%
+    html_text()
+#title
+description <- var %>%
+    html_nodes("div.pg-card .pg-card-description") %>%
+    html_text()
+description <-  gsub(pattern = "\\[\\]", replace = "", description)
+descrition <- stringr::str_replace(description, '\\*', '')
+description <-  gsub(pattern = "\n", replace = "", description)
+ukraine <- rbind(ukraine, as.data.frame(cbind(title,description)))
+ukraine <- ukraine %>% mutate(id = row_number())
+ukraine <- ukraine[1:215,]
+head(ukraine) %>% kable() %>% kable_styling()
+tail(ukraine) %>% kable() %>% kable_styling()
+```
+
+In the above chunk of codes, empty dataframe was created first and then gauged relevant html nodes to scrap the relevant data. 
+
+## get all Events Text in the timeline events
+
+```{r }
+allDescriptions <- ""
+mdescription <- c()
+for (i in (1:length(ukraine$title))){
+  
+   mdescription <- ukraine$description[i] 
+   allDescriptions <- paste0(allDescriptions,mdescription)
+  
+}
+allDescriptions <- gsub(pattern = "\\\"", replace = "", allDescriptions)
+allDescriptions <-  gsub(pattern = "\\[\\]", replace = "", allDescriptions)
+allDescriptions <-  gsub(pattern = "\"", replace = "", allDescriptions)
+allDescriptions <-  gsub(pattern = "__", replace = "", allDescriptions)
+allDescriptions <-  gsub(pattern = "--", replace = "", allDescriptions)
+allDescriptions <-  gsub(pattern = "----", replace = "", allDescriptions)
+#allDescriptions
+```
+
+## create the corpus and clean it up
+
+Now after getting the data, let's clean the data using tm package's Corpus function through removing unnecessary numbers and making the words cleaner. 
+
+```{r warning=FALSE}
+# putting the words in vector
+words <- Corpus(VectorSource(allDescriptions))
+#using tm to remove numbers, punctuation and convert to lowercase. Some high frequency words we do not want are removed.
+words <- tm_map(words, tolower)
+words <- tm_map(words, removeNumbers)
+words <- tm_map(words, removePunctuation)
+words <- tm_map(words, removeWords, stopwords("english"))
+words <- tm_map(words, removeWords, c("will","according", "later", "say", "says", "said", "saying", "tells", "also", "—-", "__" ))
+#inspect(words)
+```
+
+
+## create Term-Document Matrix for the corpus
+
+``` {r }
+#Build a term-document matrix and dataframe d to show frequency of words
+tdm <- TermDocumentMatrix(words)
+m <- as.matrix(tdm)
+#desc(m)
+# head(m, 20) %>% kable() %>% kable_styling()
+v <- sort(rowSums(m), decreasing=TRUE)
+d <- data.frame(word = names(v), freq=v)
+head(d,8) %>% kable() %>% kable_styling()
+```
+
+## Visualize the Text Events
+
+``` {r }
+#wordcloud2(d, size = 0.7)
+wordcloud2(d, size = 1, color = "random-light", backgroundColor = "grey")
+```
+
+## display words frequency 
+
+```{r}
+ggplot(head(d, 25), aes(reorder(word, freq),freq)) +
+  geom_bar(stat = "identity", fill = "#7300AB") +  #03DAC6   #6200EE
+  labs(title = "Road To Impeachment words frequency",
+       x = "Words", y = "Frequency") +
+  geom_text(aes(label=freq), vjust=0.4, hjust= 1.2, size=3, color="white")+
+  coord_flip()
+```
+
+## Show me the Tweets!!
+
+``` {r warning=FALSE, messages=FALSE}
+ggplot(d, aes(label = word, size=2)) +
+  geom_text_wordcloud_area(
+    mask = png::readPNG("t.png"),
+    rm_outside = TRUE, color="skyblue"
+  ) +
+  scale_size_area(max_size = 10) +
+  theme_minimal()
+```
+
+# Poll dataset from fivethirtyeight.com
+
+Do Americans Support Impeaching Trump?
+reference- https://projects.fivethirtyeight.com/impeachment-polls
+
+```{r}
+poll <-  read.csv("https://raw.githubusercontent.com/ekhahm/datascience/master/impeachment-polls.csv")
+head(poll)
+```
+
+
+## Reliable pollsters
+
+According to the FiveThirtyEight’s Pollster Ratings, the most reliable pollster among fifteen are three pollsters which are Marist College, SurveyUSA, and Emerson College.
+All of them receive greater than grade A-. 
+The survey questions asking if Congress should impeach/impeach and remove Trump from the three pollsters are analyzed and visualized. 
+
+reference - https://projects.fivethirtyeight.com/pollster-ratings
+
+### tidying data 
+
+```{r}
+poll$Start <- format(as.Date(poll$Start, format="%m/%d/%Y"))
+poll1 <- poll %>%
+          filter(Pollster == "Marist College"|Pollster == "Emerson College"|  Pollster =="SurveyUSA")%>%  # filter down to the three pollsters
+          filter(str_detect(Category, "impeach"))%>% 
+          gather("Answer", "percent",11:13)%>%
+          select(Start, End, Answer, percent)%>%
+          group_by(Start, Answer)%>%
+          summarise(percent = mean(percent))%>%
+          arrange(Start)
+      
+head(poll1)
+```
+
+### Visualization by date with ggplot2
+
+```{r warning=FALSE}
+gg <- ggplot(poll1, aes(x= Start, y=percent, fill= Answer))+
+       geom_bar(aes(fill=Answer), stat="identity", position="dodge",
+                    color="white", width=0.85)
+gg <- gg + geom_text(aes(label=percent),hjust=-0.15,
+                     position=position_dodge(width=0.8), size=3)
+gg <- gg + coord_flip()
+gg <- gg + labs(x="Start_date", y= "percent", title="Do you support the impeachment of President Trump?")
+gg <- gg + theme_tufte(base_family="Arial Narrow")
+gg <- gg + theme(axis.ticks.x=element_blank())
+gg <- gg + theme(axis.text.x=element_blank())
+gg <- gg + theme(axis.ticks.y=element_blank())
+gg <- gg + theme(legend.position="bottom")
+gg <- gg + theme(plot.title=element_text(hjust=0))
+
+
+gg
+
+```
+
+
+## Impeachment opinion survey from Ipsos by month 
+
+When we analyze which pollster has the largest sample set, Ipsos has provided the largest sample size so far. 
+We subset Ipsos pollster and filter the category that contains word "impeach" to specifically look at people' opinion about impeachment.  
+There are two poll categories which are `begin` and `impeach`. 
+The `begin` means polls asking if impeachment process should begin and `impeach`or `impeach_remove` means that polls asking if Congress should impeach/impeach and remove Trump.
+
+### tidying data 
+
+```{r}
+poll_Ipsos <- poll %>%
+          filter(Pollster == "Ipsos") %>%  # filter down to Ipsos
+          filter(str_detect(Category, "impeach"))%>% # subset category = impeach
+          gather("Answer", "count",11:13)%>% # makes “wide” data longer
+          select(Start, End, Answer, count)%>% 
+          arrange(desc(Start))%>%
+          separate(Start, c("start_year", "start_month", "start_day"), sep = "-") 
+
+head(poll_Ipsos)
+```
+
+### visualization 
+```{r}
+
+
+gg1 <- ggplot(poll_Ipsos, aes(x = start_day, y = count, color= Answer)) +
+      geom_point()+theme_minimal() +
+      facet_wrap( ~ start_month ) +
+      labs(title = "Impeachment survey from Ipsos 2019",
+           x = "Start_date", y = "percent") + theme_bw(base_size = 15)+
+      theme(axis.text.x = element_blank(),axis.ticks = element_blank())
+gg1
+
+```
+
+## Population analysis 
+In the poll dataset, there are total 3 different populations (all adults (a), likely voters(lv), registered voters(rv)). 
+In this section, we try to analyze how these populations are thinking about president's impeachment. 
+
+
+### Tidying data 
+```{r}
+poll %>%
+  group_by(Pop)%>%
+  summarise(sum =sum(SampleSize)) #calculating sample size for each population
+
+poll2 <- poll %>%
+          filter(str_detect(Category, "impeach")) # subset category = impeach
+
+#Calculating average percent of each answers
+poll3 <- poll2 %>%
+          filter(Pop == "a")%>%
+          summarise(Yes = mean(Yes), No = mean(No), Unsure = mean(Unsure, na.rm = TRUE))
+
+poll4 <- poll2 %>%
+          filter(Pop == "lv")%>%
+          summarise(Yes = mean(Yes), No = mean(No), Unsure = mean(Unsure, na.rm = TRUE))
+
+poll5 <- poll2 %>%
+          filter(Pop == "rv")%>%
+          summarise(Yes = mean(Yes), No = mean(No), Unsure = mean(Unsure, na.rm = TRUE))
+
+# creating a table 
+poll_pop <- rbind("all adults"= poll3, "likely voters"=poll4, "registered voters"=poll5)
+poll_pop
+    
+```
+
+
+
+## Support for impeachment by party 
+
+Now, we would like to investigate whether people support impeaching Trump by parties(Republicans, Democrats, and independents). 
+We choose Fox News pollster and CNN/SSRS pollster and then compare the results. Both total sample size are about same around 800. 
+The visualization is grouped by the parties. 
+
+Fox News  
+### tidying data   
+
+```{r}
+poll6 <- poll %>%
+          select(Start, End, Pollster, Rep.Yes, Rep.No, Dem.Yes, Dem.No, Ind.Yes, Ind.No) %>%
+          filter(Pollster == "Fox News") %>%
+          gather("Answer", "percent",4:9) %>%
+          separate(Answer, c("Party", "YesNo"))%>% # separate character by non-character(".")
+          arrange(desc(Start))
+
+head(poll6)
+```
+
+### Visualization with boxplot 
+
+```{r}
+ggplot(poll6, aes(x = YesNo, y = percent, fill = YesNo)) + geom_boxplot() +
+facet_wrap(~ Party, ncol = 5)+
+labs(title = "Impeachment opinion by party from Fox News",x = "Start_date", y = "percent") + theme_bw(base_size = 15)
+        
+```
+
+
+CNN/SSRS   
+### tidying data
+
+```{r}
+poll7 <- poll %>%
+          filter(Pollster == "CNN/SSRS") %>%
+          filter(str_detect(Category, "impeach"))%>%
+          select(Start, End, Pollster, Rep.Yes, Rep.No, Dem.Yes, Dem.No, Ind.Yes, Ind.No) %>%
+          gather("Answer", "percent",4:9) %>%
+          separate(Answer, c("Party", "YesNo"))%>%
+          arrange(desc(Start))
+
+head(poll7)
+``` 
+
+### Visualization with boxplot
+```{r}
+ggplot(poll7, aes(x = YesNo, y = percent, fill = YesNo)) + geom_boxplot() +
+facet_wrap(~ Party, ncol = 5)+
+labs(title = "Impeachment opinion by party from CNN/SSRS",x = "Start_date", y = "percent") + theme_bw(base_size = 15)
+        
+```
+
+### Visualization of poll data over time
+Now let's look at how this compares to all poll data collected in our sample. We created a new measure called 'percent' which is the ratio of yes's to no's over time. We then adjust for poll sample size by multiplying the ratio by the log of the sample to see if that changes our results in any way. 
+
+```{r}
+poll$percent <- poll$Yes/poll$No
+poll$EndDate <- as.Date(poll$End, "%m/%d/%Y")
+ggplot(data = poll) +
+  geom_point(aes(x = EndDate, y = percent,
+  size = poll$SampleSize,
+  colour = factor(Category))) + 
+  geom_hline(yintercept=1)
+ggplot(data = poll) + 
+  geom_point(aes(x = EndDate, y = percent)) +
+  geom_smooth(data = poll, 
+            aes(x = EndDate, y = percent))
+poll$wgtpct <- poll$percent * log(poll$SampleSize)
+ggplot(data = poll) + 
+  geom_point(aes(x = EndDate, y = wgtpct)) +
+  geom_smooth(data = poll, 
+              aes(x = EndDate, y = wgtpct, 
+                  size = poll$SampleSize))
+ggplot(data = poll) + 
+  geom_point(aes(x = EndDate, y = wgtpct)) +
+  geom_smooth(data = poll, 
+              aes(x = EndDate, y = wgtpct, 
+                  size = poll$SampleSize), method = "lm")
+```
+### Regression of poll data
+
+Finally we run a regression on the data and take the slope to estiamte the trajectory of the ratio of Americans in favor of impleachment proceedings. 
+
+```{r}
+library(lubridate)
+days <- yday(poll$EndDate) - 1 # so Jan 1 = day 0 
+total_days <- cumsum(days)
+ref_date <- dmy("01-01-2017")
+poll$alldays <- difftime(poll$EndDate,ref_date,units = "days")
+lmpct <- lm(poll$percent ~ poll$alldays)
+summary(lmpct)
+365*3.328e-04
+```
+
+
+# Extracting tweets from twitter using API
+
+Now finally let's go and get tweets from twiter using twitteR package. Initially, we wanted to filter the tweets before few incidents going on with impeachment case but due to access we could not do that. Below is the chunk of code which allows us to get into twitter and get tweets. 
+
+```{r echo=FALSE}
+# Saving the necessary keys from twitter to access API
+api_key <- "TR4Hz62bUJhlyQtqXMKBqXvPN"
+api_secret <- "8R3UTx92CGPPmUHzpMpcZKambVzKq0jtQpZXXkOuIJbY919urz"
+access_token <- "1013888021731643392-JGFEmjQGTBgjRnEPkHv4irJO79imhx"
+access_secret <- "loBXTwtgfVZRmSH38eSY2RNwwVJDNs7wRX1pYBraApQWa"
+setup_twitter_oauth(api_key, api_secret, access_token, access_secret)
+```
+
+## Extracting tweets and converting into dataframe
+
+Let's get the tweets using keywords such as impeachment, whistleblower, Ukraine. Initially while getting tweets, it brought bunch of retweets then we had to exclude from the data to see reliable results. 
+
+
+```{r}
+# Now let's start extracting tweets regarding impeachment inquiry by using few trending tweets
+tweets <- searchTwitter('impeachment, whistleblower, Ukraine, -filter:retweets', n=2000, lang = 'en')
+# Converting tweets into dataframe
+tweets_df <- twListToDF(tweets)
+tweets_df2 <- tweets_df$text # This vector contain only tweets
+```
+
+
+```{r}
+# Reading the csv file from local directory
+tweets2 <- read.csv('tweets_only2.csv', row.names=NULL, stringsAsFactors = FALSE, header=TRUE)
+```
+
+## Data cleaning and text mining 
+
+Again we used Corpus to do text mining and clean the data. There were bunch of unnecessary words which were needed to be excluded otherwise it would brought meaningless result. 
+
+```{r}
+words <- Corpus(VectorSource(tweets2$x)) # Saving the tweets in vector 'words' while x is column's name which was given randomly while importing
+words <- tm_map(words, tolower)
+words <- tm_map(words, removeNumbers)
+words <- tm_map(words, removePunctuation)
+words <- tm_map(words, stripWhitespace)
+words <- tm_map(words, removeWords, stopwords("english"))
+words <- tm_map(words, removeWords, c("will", "got", "admits<U+0085>", "want", "say")) # This sentence would be helpful for later to remove any unnecessary words
+# words <- tm_map(words, gsub, pattern = 'Impeached', replacement= 'Impeachment') # This line of code will replace impeached with impeachment
+# Now let's build a matrix and dataframe to show the number of words to make wordcloud
+tdm <- TermDocumentMatrix((words))
+m <- as.matrix(tdm)
+v <- sort(rowSums(m), decreasing=TRUE)
+d <- data.frame(word= names(v), freq=v)
+head(d,8)
+```
+
+
+## Data visualization 
+
+Let's visualize the data through wordcloud to see the frequency of words and then we will use sentiment analysis to see what Americans think about president Trump's impeachment inquiry. 
+
+### Wordcloud
+
+```{r warning=FALSE}
+set.seed(3322)
+wordcloud(words=d$word, freq=d$freq, min.freq=10, max.words =200, random.order=FALSE, decreasing= TRUE, rot.per=0.05, colors=brewer.pal(10,"Dark2"))
+```
+
+### Sentiment analysis
+
+```{r}
+# Using sentiment analysis to see people's reaction
+imp_tdm <- tidy(tdm)
+imp_senti <- imp_tdm %>% 
+  inner_join(get_sentiments("bing"), by=c(term="word"))
+imp_senti %>% 
+  count(sentiment, term, wt=count) %>% 
+  ungroup() %>% 
+  filter(n>= 3) %>% 
+  mutate(n= ifelse(sentiment=="negative", -n, n)) %>% 
+  mutate(term=reorder(term,n)) %>% 
+  ggplot(aes(term, n, fill=sentiment))+ geom_bar(stat="identity")+ylab("People's sentiment on Trump's Impeachment")+coord_flip()
+```
+
+Result from sentiment analysis shows that people are upset and angry on his Ukraine case. Although it would be better if we had access, it would help to see the sentiments on different time period. It would also let us filter by locations and the project would be more specific to the the question "Does Americans support Trump's impeachment"
+
+# Conclusion
+
+The result based on all three data sources show mix opinion either president Trump should be impeached or not. Based on the data sources taken from Washington Post and twitter, people are overall angry and upset about his Ukraine case and see that as a shameful but the result was still not clear. Five thirty eight's result shows clearly mixed opinion. Overall polls shows almost same result but if we take a look at data more specifically, we see that Democrat's clearly support his impeachment while Republicans clearly do not support his impeachment. Since the sample size were around 1000 during all polls, we cannot exactly say if All the Americans want his impeachment or not but we can clearly point out the Democrats want him impeached while Republicans don't. Since the Ukraine story we can see that overall, more people wanted him impeached than after the Mueller Report. Based on limitations of data accessibility, further research on this topic might bring more insights. 
